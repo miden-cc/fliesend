@@ -88,13 +88,15 @@ async function handleOpenFolder() {
 /**
  * ノードマップを構築（再帰的）
  */
-function buildNodesMap(nodes) {
+function buildNodesMap(nodes, parentId = null) {
   if (!nodes) return;
 
   nodes.forEach(node => {
+    // 親IDを設定
+    node.parentId = parentId;
     nodesMap.set(node.id, node);
     if (node.children) {
-      buildNodesMap(node.children);
+      buildNodesMap(node.children, node.id);
     }
   });
 }
@@ -255,6 +257,17 @@ function handleKeyDown(event) {
         renderTree();
       }
       break;
+
+    case 'Tab': // Tab/Shift+Tab: 階層変更
+      event.preventDefault();
+      if (event.shiftKey) {
+        // Shift+Tab: 階層を上げる
+        moveNodeUp(selectedNodeId);
+      } else {
+        // Tab: 階層を下げる
+        moveNodeDown(selectedNodeId);
+      }
+      break;
   }
 }
 
@@ -344,6 +357,190 @@ function countNodes(nodes) {
  */
 function updateStatus(message) {
   statusBar.textContent = message;
+}
+
+// ========================================
+// 階層変更機能（Tab/Shift+Tab）
+// ========================================
+
+/**
+ * Tab: ノードを一段階下げる（前の兄弟の子にする）
+ */
+async function moveNodeDown(nodeId) {
+  const node = nodesMap.get(nodeId);
+  if (!node) return;
+
+  // 兄弟ノードを取得
+  const siblings = getSiblings(nodeId);
+  const currentIndex = siblings.findIndex(n => n.id === nodeId);
+
+  // 最初の兄弟の場合は移動不可
+  if (currentIndex === 0) {
+    updateStatus('これ以上下げられません（最初のアイテムです）');
+    return;
+  }
+
+  // 前の兄弟を取得
+  const previousSibling = siblings[currentIndex - 1];
+
+  // 前の兄弟がフォルダでない場合は移動不可
+  if (previousSibling.type !== 'folder') {
+    updateStatus('前のアイテムがフォルダではないため移動できません');
+    return;
+  }
+
+  // 前の兄弟フォルダの中に移動
+  await moveNodeTo(node, previousSibling);
+}
+
+/**
+ * Shift+Tab: ノードを一段階上げる（親の兄弟にする）
+ */
+async function moveNodeUp(nodeId) {
+  const node = nodesMap.get(nodeId);
+  if (!node) return;
+
+  // 親ノードを取得
+  if (!node.parentId) {
+    updateStatus('これ以上上げられません（ルートレベルです）');
+    return;
+  }
+
+  const parent = nodesMap.get(node.parentId);
+  if (!parent) return;
+
+  // 祖父母ノードを取得（親の親）
+  const grandParent = parent.parentId ? nodesMap.get(parent.parentId) : null;
+
+  // 親の直後に移動
+  await moveNodeTo(node, grandParent, parent);
+}
+
+/**
+ * ノードを指定の親の子として移動
+ * @param {Object} node - 移動するノード
+ * @param {Object|null} newParent - 新しい親ノード（nullの場合はルートレベル）
+ * @param {Object|null} afterNode - この兄弟の直後に配置（指定しない場合は末尾）
+ */
+async function moveNodeTo(node, newParent, afterNode = null) {
+  try {
+    updateStatus('移動中...');
+
+    // 新しい親のパスを決定
+    const newParentPath = newParent ? newParent.path : rootPath;
+
+    // ファイルシステムに移動を実行
+    const result = await window.electronAPI.moveNode(
+      node.path,
+      newParentPath,
+      null // 名前は変更しない
+    );
+
+    if (!result.success) {
+      updateStatus(`エラー: ${result.error}`);
+      return;
+    }
+
+    // ツリー構造を更新
+    updateTreeStructure(node, newParent, afterNode, result.newPath);
+
+    // 新しい親を展開
+    if (newParent) {
+      expandedNodes.add(newParent.id);
+    }
+
+    // 再レンダリング
+    renderTree();
+
+    updateStatus('移動完了');
+
+  } catch (error) {
+    updateStatus('移動中にエラーが発生しました');
+    console.error('Error in moveNodeTo:', error);
+  }
+}
+
+/**
+ * ツリー構造を更新（ノード移動後）
+ */
+function updateTreeStructure(node, newParent, afterNode, newPath) {
+  // 古い親から削除
+  const oldParent = node.parentId ? nodesMap.get(node.parentId) : null;
+
+  if (oldParent && oldParent.children) {
+    const index = oldParent.children.findIndex(n => n.id === node.id);
+    if (index !== -1) {
+      oldParent.children.splice(index, 1);
+    }
+  } else {
+    // ルートレベルから削除
+    const index = currentTree.findIndex(n => n.id === node.id);
+    if (index !== -1) {
+      currentTree.splice(index, 1);
+    }
+  }
+
+  // 新しい親に追加
+  node.parentId = newParent ? newParent.id : null;
+  node.path = newPath;
+
+  if (newParent) {
+    if (!newParent.children) {
+      newParent.children = [];
+    }
+
+    if (afterNode) {
+      // afterNodeの直後に挿入
+      const insertIndex = newParent.children.findIndex(n => n.id === afterNode.id);
+      newParent.children.splice(insertIndex + 1, 0, node);
+    } else {
+      // 末尾に追加
+      newParent.children.push(node);
+    }
+  } else {
+    // ルートレベルに追加
+    if (afterNode) {
+      const insertIndex = currentTree.findIndex(n => n.id === afterNode.id);
+      currentTree.splice(insertIndex + 1, 0, node);
+    } else {
+      currentTree.push(node);
+    }
+  }
+
+  // 子ノードのパスも更新（再帰的）
+  updateChildrenPaths(node);
+}
+
+/**
+ * 子ノードのパスを再帰的に更新
+ */
+function updateChildrenPaths(parent) {
+  if (!parent.children) return;
+
+  parent.children.forEach(child => {
+    const parentPath = parent.path;
+    child.path = parentPath + '/' + child.name;
+
+    if (child.children) {
+      updateChildrenPaths(child);
+    }
+  });
+}
+
+/**
+ * 兄弟ノードを取得
+ */
+function getSiblings(nodeId) {
+  const node = nodesMap.get(nodeId);
+  if (!node) return [];
+
+  if (node.parentId) {
+    const parent = nodesMap.get(node.parentId);
+    return parent && parent.children ? parent.children : [];
+  } else {
+    // ルートレベルのノード
+    return currentTree;
+  }
 }
 
 /**

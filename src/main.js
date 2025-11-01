@@ -174,3 +174,62 @@ function isWritable(stats) {
   // Unixパーミッションの簡易チェック（所有者の書き込み権限）
   return (stats.mode & 0o200) !== 0;
 }
+
+/**
+ * ノードを移動（ファイルシステムに反映）
+ */
+ipcMain.handle('fs:moveNode', async (event, sourcePath, destParentPath, newName) => {
+  try {
+    // 移動先のパスを構築
+    const fileName = newName || path.basename(sourcePath);
+    const destPath = path.join(destParentPath, fileName);
+
+    // 同名ファイルのチェック
+    try {
+      await fs.access(destPath);
+      // ファイルが存在する場合はエラー
+      return {
+        success: false,
+        error: `同名のファイル/フォルダが既に存在します: ${fileName}`
+      };
+    } catch (err) {
+      // ファイルが存在しない場合は正常（続行）
+    }
+
+    // パストラバーサル対策
+    const resolvedDest = path.resolve(destPath);
+    const resolvedDestParent = path.resolve(destParentPath);
+    if (!resolvedDest.startsWith(resolvedDestParent)) {
+      return {
+        success: false,
+        error: 'パストラバーサルが検出されました'
+      };
+    }
+
+    // ファイル/フォルダを移動
+    await fs.rename(sourcePath, destPath);
+
+    return {
+      success: true,
+      newPath: destPath
+    };
+
+  } catch (error) {
+    console.error('Error moving node:', error);
+
+    // エラータイプに応じたメッセージ
+    let errorMessage = error.message;
+    if (error.code === 'EACCES') {
+      errorMessage = 'ファイル操作の権限がありません';
+    } else if (error.code === 'ENOENT') {
+      errorMessage = 'ファイルまたはフォルダが見つかりません';
+    } else if (error.code === 'EBUSY') {
+      errorMessage = 'ファイルが使用中です';
+    }
+
+    return {
+      success: false,
+      error: errorMessage
+    };
+  }
+});

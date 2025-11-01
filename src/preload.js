@@ -16,5 +16,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // ファイルシステムAPI
   openFolderDialog: () => ipcRenderer.invoke('dialog:openFolder'),
-  readTree: (path) => ipcRenderer.invoke('fs:readTree', path)
+  readTree: (path) => ipcRenderer.invoke('fs:readTree', path),
+  moveNode: (sourcePath, destParentPath, newName) =>
+    ipcRenderer.invoke('fs:moveNode', sourcePath, destParentPath, newName)
 });
