@@ -33,11 +33,18 @@ async function buildTreeFromPath(dirPath) {
 
   // フォルダの場合
   const children = [];
+  let metadata = null;
   try {
     const entries = await fs.readdir(dirPath, { withFileTypes: true });
 
     for (const entry of entries) {
-      // 隠しファイルをスキップ
+      if (entry.name === '.metadata.json') {
+        const metadataFilePath = path.join(dirPath, entry.name);
+        const content = await fs.readFile(metadataFilePath, 'utf-8');
+        metadata = JSON.parse(content);
+        continue;
+      }
+      // 他の隠しファイルはスキップ
       if (entry.name.startsWith('.')) {
         continue;
       }
@@ -58,11 +65,12 @@ async function buildTreeFromPath(dirPath) {
     return a.name.localeCompare(b.name, 'ja');
   });
 
-  return {
-    id: generateId(),
+  const folderNode = {
+    id: metadata ? metadata.id : generateId(),
     name,
     path: dirPath,
     type: 'folder',
+    displayName: metadata ? metadata.displayName : null,
     children,
     stats: {
       size: stats.size,
@@ -71,6 +79,8 @@ async function buildTreeFromPath(dirPath) {
       isReadOnly: !(stats.mode & 0o200)
     }
   };
+
+  return folderNode;
 }
 
 /**
