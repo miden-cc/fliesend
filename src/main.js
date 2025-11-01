@@ -4,6 +4,14 @@ const fs = require('fs').promises;
 
 // 開発モードの判定
 const isDev = process.argv.includes('--dev');
+if (isDev) {
+  (async () => {
+    const getPort = (await import('get-port')).default;
+    const port = await getPort({ port: 9223 }); // Electron's default debugging port
+    app.commandLine.appendSwitch('remote-debugging-port', port.toString());
+    console.log(`Debugging port set to ${port}`);
+  })();
+}
 
 // メインウィンドウの参照
 let mainWindow;
@@ -138,6 +146,69 @@ ipcMain.handle('fs:moveNode', async (event, sourcePath, destParentPath) => {
     return newPath;
   } catch (error) {
     console.error('Error moving node:', error);
+    throw error;
+  }
+});
+
+// ノードを作成（ファイルまたはフォルダ）
+ipcMain.handle('fs:createNode', async (event, parentPath, nodeName, type) => {
+  const newPath = path.join(parentPath, nodeName);
+  try {
+    // 存在チェック
+    try {
+      await fs.access(newPath);
+      throw new Error(`同名のファイル/フォルダが既に存在します: ${nodeName}`);
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+
+    if (type === 'file') {
+      await fs.writeFile(newPath, ''); // 空のファイルを作成
+    } else if (type === 'folder') {
+      await fs.mkdir(newPath);
+    } else {
+      throw new Error(`無効なノードタイプです: ${type}`);
+    }
+
+    console.log(`Created ${type}: ${newPath}`);
+    return buildTreeFromPath(newPath); // 作成したノードの情報を返す
+  } catch (error) {
+    console.error(`Error creating node:`, error);
+    throw error;
+  }
+});
+
+// ノードを削除
+ipcMain.handle('fs:deleteNode', async (event, nodePath) => {
+  try {
+    await fs.rm(nodePath, { recursive: true, force: true });
+    console.log(`Deleted: ${nodePath}`);
+    return { success: true };
+  } catch (error) {
+    console.error(`Error deleting node:`, error);
+    throw error;
+  }
+});
+
+// ノード名を変更
+ipcMain.handle('fs:renameNode', async (event, oldPath, newName) => {
+  const parentDir = path.dirname(oldPath);
+  const newPath = path.join(parentDir, newName);
+  try {
+    // 存在チェック
+    if (oldPath === newPath) return newPath; // 名前が変わっていない
+    try {
+      await fs.access(newPath);
+      throw new Error(`同名のファイル/フォルダが既に存在します: ${newName}`);
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+
+    await fs.rename(oldPath, newPath);
+    console.log(`Renamed: ${oldPath} -> ${newPath}`);
+    return newPath;
+  } catch (error) {
+    console.error(`Error renaming node:`, error);
     throw error;
   }
 });
