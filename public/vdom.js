@@ -130,6 +130,9 @@ function diffChildren(oldChildren, newChildren) {
  * @returns {Node} The real DOM node.
  */
 export function render(vNode) {
+  if (vNode === null || vNode === undefined) {
+    return document.createTextNode('');
+  }
   if (typeof vNode === 'string') {
     return document.createTextNode(vNode);
   }

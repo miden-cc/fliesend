@@ -18,6 +18,7 @@ import {
 import {
   handleOpenFolder,
   handleCreateNode,
+  handleCreateSiblingFolder,
   handleDeleteNode
 } from './event-handlers.js';
 
@@ -71,6 +72,9 @@ function handleKeyDown(event) {
       navigateDown();
       break;
     case 'Enter':
+      event.preventDefault();
+      handleCreateSiblingFolder();
+      break;
     case ' ':
       event.preventDefault();
       if (selectedNodeId) {

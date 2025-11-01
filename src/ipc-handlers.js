@@ -65,17 +65,38 @@ function setupIpcHandlers(mainWindow) {
 
   // ノードを作成（ファイルまたはフォルダ）
   ipcMain.handle('fs:createNode', async (event, parentPath, nodeName, type) => {
-    const newPath = path.join(parentPath, nodeName);
     try {
-      // 存在チェック
-      await checkPathNotExists(newPath, nodeName);
+      let finalNodeName = nodeName;
+      let newPath;
 
-      if (type === 'file') {
-        await fs.writeFile(newPath, ''); // 空のファイルを作成
-      } else if (type === 'folder') {
+      if (type === 'folder' && !nodeName) {
+        // 'blank' フォルダの作成
+        let i = 0;
+        do {
+          finalNodeName = i === 0 ? 'new-folder' : `new-folder (${i})`;
+          newPath = path.join(parentPath, finalNodeName);
+          i++;
+        } while (await fs.access(newPath).then(() => true).catch(() => false));
+
         await fs.mkdir(newPath);
+
+        const uniqueId = require('crypto').randomUUID();
+        const metadata = { id: uniqueId, displayName: '' };
+        const metadataFilePath = path.join(newPath, '.metadata.json');
+        await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2));
+
       } else {
-        throw new Error(`無効なノードタイプです: ${type}`);
+        // 通常のファイル/フォルダの作成
+        newPath = path.join(parentPath, finalNodeName);
+        await checkPathNotExists(newPath, finalNodeName);
+
+        if (type === 'file') {
+          await fs.writeFile(newPath, ''); // 空のファイルを作成
+        } else if (type === 'folder') {
+          await fs.mkdir(newPath);
+        } else {
+          throw new Error(`無効なノードタイプです: ${type}`);
+        }
       }
 
       console.log(`Created ${type}: ${newPath}`);
@@ -114,6 +135,40 @@ function setupIpcHandlers(mainWindow) {
       return newPath;
     } catch (error) {
       console.error(`Error renaming node:`, error);
+      throw error;
+    }
+  });
+
+  // メタデータを持つノードの表示名を更新
+  ipcMain.handle('fs:updateNodeDisplayName', async (event, nodePath, newDisplayName) => {
+    try {
+      const metadataPath = path.join(nodePath, '.metadata.json');
+      const data = await fs.readFile(metadataPath, 'utf8');
+      const metadata = JSON.parse(data);
+
+      metadata.displayName = newDisplayName;
+
+      await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
+
+      // フォルダ名をdisplayNameの最初の10文字に（サニタイズして）変更
+      const baseSanitizedName = newDisplayName.substring(0, 10).replace(/[^a-zA-Z0-9]/g, '_');
+      const parentDir = path.dirname(nodePath);
+      let newPath;
+      let i = 0;
+      do {
+        const sanitizedName = i === 0 ? baseSanitizedName : `${baseSanitizedName} (${i})`;
+        newPath = path.join(parentDir, sanitizedName);
+        i++;
+      } while (await fs.access(newPath).then(() => true).catch(() => false));
+
+
+      if (nodePath !== newPath) {
+        await fs.rename(nodePath, newPath);
+      }
+
+      return newPath;
+    } catch (error) {
+      console.error(`Error updating display name:`, error);
       throw error;
     }
   });

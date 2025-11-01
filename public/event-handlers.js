@@ -79,6 +79,45 @@ export async function handleCreateNode(type) {
 }
 
 /**
+ * 兄弟フォルダ作成処理
+ */
+export async function handleCreateSiblingFolder() {
+  const { tree, selectedNodeId } = getState();
+
+  const selectedNode = getSelectedNodeOrError(
+    tree,
+    selectedNodeId,
+    findNodeById,
+    '基準となるファイルまたはフォルダを選択してください。'
+  );
+  if (!selectedNode) return;
+
+  if (isRootNode(selectedNode, tree)) {
+    showNotification('ルート直下には兄弟アイテムを作成できません。', 'error');
+    return;
+  }
+
+  const parent = findParentNode(tree, selectedNodeId);
+  if (!parent) {
+    showNotification('親フォルダが見つかりません。', 'error');
+    return;
+  }
+
+  try {
+    const newNode = await withFsErrorHandling(
+      () => window.electronAPI.createNode(parent.path, null, 'folder'),
+      '作成'
+    );
+
+    addChildToNode(parent, newNode);
+
+    setState({ tree, selectedNodeId: newNode.id });
+  } catch (error) {
+    // エラーは withFsErrorHandling で処理済み
+  }
+}
+
+/**
  * ノード削除処理
  */
 export async function handleDeleteNode() {
@@ -120,20 +159,42 @@ export async function handleDeleteNode() {
 export async function handleRenameNode(nodeId, newName) {
   const { tree } = getState();
   const nodeToRename = findNodeById(tree, nodeId);
-  if (!nodeToRename || nodeToRename.name === newName) return;
+  if (!nodeToRename) return;
 
-  try {
-    const newPath = await withFsErrorHandling(
-      () => window.electronAPI.renameNode(nodeToRename.path, newName),
-      '名前を変更'
-    );
+  // If the node has a displayName, we are updating the metadata
+  if (nodeToRename.displayName !== null && nodeToRename.displayName !== undefined) {
+    if (nodeToRename.displayName === newName) return;
+    try {
+      const newPath = await withFsErrorHandling(
+        () => window.electronAPI.updateNodeDisplayName(nodeToRename.path, newName),
+        '表示名を変更'
+      );
 
-    nodeToRename.name = newName;
-    nodeToRename.path = newPath;
+      // Update the node in the local state
+      nodeToRename.displayName = newName;
+      nodeToRename.name = newPath.split('/').pop(); // Update the folder name
+      nodeToRename.path = newPath;
 
-    setState({ tree });
-  } catch (error) {
-    // エラーは withFsErrorHandling で処理済み
+      setState({ tree });
+    } catch (error) {
+      // Error is handled by withFsErrorHandling
+    }
+  } else {
+    // Otherwise, it's a normal rename
+    if (nodeToRename.name === newName) return;
+    try {
+      const newPath = await withFsErrorHandling(
+        () => window.electronAPI.renameNode(nodeToRename.path, newName),
+        '名前を変更'
+      );
+
+      nodeToRename.name = newName;
+      nodeToRename.path = newPath;
+
+      setState({ tree });
+    } catch (error) {
+      // Error is handled by withFsErrorHandling
+    }
   }
 }
 

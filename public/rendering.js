@@ -104,7 +104,7 @@ export function renderNode(node, level, selectedNodeId, expandedNodes) {
     onblur: (e) => {
       handleRenameNode(node.id, e.target.textContent);
     }
-  }, escapeHtml(node.name));
+  }, node.displayName === '' ? 'blank' : (node.displayName || escapeHtml(node.name)));
 
   return h('div', props,
     h('span', { class: 'tree-node-icon' }, arrowIcon, icon),
