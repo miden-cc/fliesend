@@ -211,11 +211,13 @@ function renderNode(node, level, selectedNodeId, expandedNodes) {
     const isExpanded = expandedNodes.has(node.id);
     const hasChildren = node.type === 'folder' && node.children && node.children.length > 0;
 
-    let icon = '';
-    if (node.type === 'folder') {
-        icon = hasChildren ? (isExpanded ? '▼' : '▶') : '▪';
-    } else {
-        icon = '・';
+    // Static icon (bullet or square)
+    const icon = h('span', {}, node.type === 'folder' ? '▪' : '・');
+
+    // Arrow icon (only for folders with children, shown on hover)
+    let arrowIcon = null;
+    if (node.type === 'folder' && hasChildren) {
+        arrowIcon = h('span', { class: 'folder-arrow' }, isExpanded ? '▼' : '▶');
     }
 
     const children = (node.type === 'folder' && isExpanded && node.children)
@@ -261,7 +263,7 @@ function renderNode(node, level, selectedNodeId, expandedNodes) {
     }, escapeHtml(node.name));
 
     return h('div', props,
-        h('span', { class: 'tree-node-icon' }, icon),
+        h('span', { class: 'tree-node-icon' }, arrowIcon, icon),
         nameElement,
         ...children
     );
