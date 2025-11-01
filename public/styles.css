@@ -137,69 +137,6 @@ body {
   color: var(--text-secondary);
 }
 
-/* ツリーノード */
-.tree-node {
-  display: flex;
-  align-items: center;
-  padding: 4px 8px;
-  margin: 1px 0;
-  cursor: pointer;
-  user-select: none;
-  transition: background 0.15s ease;
-  line-height: 1.4;
-  border-radius: 4px;
-}
-
-.tree-node:hover {
-  background: var(--bg-hover);
-}
-
-.tree-node.selected {
-  background: var(--accent-color);
-  color: white;
-}
-
-.tree-node.selected .bullet,
-.tree-node.selected .node-name,
-.tree-node.selected .expand-indicator {
-  color: white;
-}
-
-/* 展開インジケーター */
-.tree-node .expand-indicator {
-  width: 14px;
-  margin-right: 4px;
-  color: var(--text-secondary);
-  font-size: 12px;
-  text-align: center;
-  transition: transform 0.2s ease;
-  flex-shrink: 0;
-}
-
-.tree-node .bullet {
-  margin-right: 6px;
-  color: var(--text-secondary);
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
-.tree-node .node-name {
-  font-size: 14px;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-}
-
-.tree-node[data-node-type="folder"] .node-name {
-  font-weight: 500;
-}
-
-.tree-node[data-node-type="file"] .node-name {
-  font-weight: 400;
-}
-
 /* スクロールバーのスタイル */
 .outline-tree::-webkit-scrollbar {
   width: 8px;
