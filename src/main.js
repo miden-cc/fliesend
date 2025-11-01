@@ -114,6 +114,34 @@ ipcMain.handle('fs:openFile', async (event, filePath) => {
   }
 });
 
+// ノードを移動（ファイル/フォルダを別のフォルダに移動）
+ipcMain.handle('fs:moveNode', async (event, sourcePath, destParentPath) => {
+  try {
+    const nodeName = path.basename(sourcePath);
+    const newPath = path.join(destParentPath, nodeName);
+
+    // 移動先に同名のファイル/フォルダが既に存在するかチェック
+    try {
+      await fs.access(newPath);
+      throw new Error(`移動先に同名のファイル/フォルダが既に存在します: ${nodeName}`);
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        throw error;
+      }
+      // ENOENT = ファイルが存在しない = OK
+    }
+
+    // 移動を実行
+    await fs.rename(sourcePath, newPath);
+
+    console.log(`Moved: ${sourcePath} -> ${newPath}`);
+    return newPath;
+  } catch (error) {
+    console.error('Error moving node:', error);
+    throw error;
+  }
+});
+
 /**
  * ファイルシステムのヘルパー関数
  */

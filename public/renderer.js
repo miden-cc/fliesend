@@ -241,6 +241,18 @@ function handleKeyDown(event) {
         }
       }
       break;
+    case 'Tab':
+      event.preventDefault();
+      if (state.selectedNodeId) {
+        if (event.shiftKey) {
+          // Shift+Tab: 階層を上げる
+          moveNodeUp();
+        } else {
+          // Tab: 階層を下げる
+          moveNodeDown();
+        }
+      }
+      break;
   }
 }
 
@@ -320,6 +332,156 @@ function findNodeById(node, targetId) {
   if (node.type === 'folder' && node.children) {
     for (const child of node.children) {
       const found = findNodeById(child, targetId);
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Tab: 選択されたノードの階層を下げる
+ * 直前の兄弟ノードの子として移動
+ */
+async function moveNodeDown() {
+  if (!state.selectedNodeId) return;
+
+  const selectedNode = findNodeById(state.tree, state.selectedNodeId);
+  if (!selectedNode) return;
+
+  // ルートノードは移動できない
+  if (selectedNode.id === state.tree.id) {
+    updateStatus('ルートフォルダは移動できません');
+    return;
+  }
+
+  // 親ノードと兄弟ノードを取得
+  const parent = findParentNode(state.tree, state.selectedNodeId);
+  if (!parent) return;
+
+  const siblings = parent.children || [];
+  const currentIndex = siblings.findIndex(n => n.id === state.selectedNodeId);
+
+  if (currentIndex <= 0) {
+    // 最初の兄弟なので移動できない
+    updateStatus('これ以上左にインデントできません');
+    return;
+  }
+
+  const previousSibling = siblings[currentIndex - 1];
+
+  // 前の兄弟がフォルダでない場合は移動できない
+  if (previousSibling.type !== 'folder') {
+    updateStatus('ファイルの下に移動することはできません');
+    return;
+  }
+
+  try {
+    updateStatus('移動中...');
+
+    // ファイルシステムで移動
+    const newPath = await window.electronAPI.moveNode(
+      selectedNode.path,
+      previousSibling.path
+    );
+
+    // ツリー構造を更新
+    siblings.splice(currentIndex, 1);
+    if (!previousSibling.children) {
+      previousSibling.children = [];
+    }
+    previousSibling.children.push(selectedNode);
+    selectedNode.path = newPath;
+
+    // 前の兄弟を展開
+    state.expandedNodes.add(previousSibling.id);
+
+    // 再描画
+    renderTree();
+    updateStatus('移動しました');
+  } catch (error) {
+    console.error('Error moving node:', error);
+    updateStatus('エラー: 移動に失敗しました');
+    showError('ノードの移動に失敗しました: ' + error.message);
+  }
+}
+
+/**
+ * Shift+Tab: 選択されたノードの階層を上げる
+ * 親の兄弟として移動（親の直後）
+ */
+async function moveNodeUp() {
+  if (!state.selectedNodeId) return;
+
+  const selectedNode = findNodeById(state.tree, state.selectedNodeId);
+  if (!selectedNode) return;
+
+  // ルートノードは移動できない
+  if (selectedNode.id === state.tree.id) {
+    updateStatus('ルートフォルダは移動できません');
+    return;
+  }
+
+  // 親ノードを取得
+  const parent = findParentNode(state.tree, state.selectedNodeId);
+  if (!parent) return;
+
+  // 親がルートの場合は移動できない
+  if (parent.id === state.tree.id) {
+    updateStatus('これ以上右にインデントできません');
+    return;
+  }
+
+  // 祖父母ノードを取得
+  const grandParent = findParentNode(state.tree, parent.id);
+  if (!grandParent) return;
+
+  try {
+    updateStatus('移動中...');
+
+    // ファイルシステムで移動
+    const newPath = await window.electronAPI.moveNode(
+      selectedNode.path,
+      grandParent.path
+    );
+
+    // ツリー構造を更新
+    // 親の子リストから削除
+    const parentChildren = parent.children || [];
+    const currentIndex = parentChildren.findIndex(n => n.id === state.selectedNodeId);
+    if (currentIndex >= 0) {
+      parentChildren.splice(currentIndex, 1);
+    }
+
+    // 祖父母の子リストに追加（親の直後）
+    const grandParentChildren = grandParent.children || [];
+    const parentIndex = grandParentChildren.findIndex(n => n.id === parent.id);
+    grandParentChildren.splice(parentIndex + 1, 0, selectedNode);
+    selectedNode.path = newPath;
+
+    // 再描画
+    renderTree();
+    updateStatus('移動しました');
+  } catch (error) {
+    console.error('Error moving node:', error);
+    updateStatus('エラー: 移動に失敗しました');
+    showError('ノードの移動に失敗しました: ' + error.message);
+  }
+}
+
+/**
+ * 親ノードを検索
+ */
+function findParentNode(node, targetId) {
+  if (node.children) {
+    for (const child of node.children) {
+      if (child.id === targetId) {
+        return node;
+      }
+
+      const found = findParentNode(child, targetId);
       if (found) {
         return found;
       }

@@ -19,5 +19,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // ファイルシステム
   readTree: (folderPath) => ipcRenderer.invoke('fs:readTree', folderPath),
-  openFile: (filePath) => ipcRenderer.invoke('fs:openFile', filePath)
+  openFile: (filePath) => ipcRenderer.invoke('fs:openFile', filePath),
+  moveNode: (sourcePath, destParentPath) => ipcRenderer.invoke('fs:moveNode', sourcePath, destParentPath)
 });
