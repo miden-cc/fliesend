@@ -1,0 +1,23 @@
+{
+  "name": "fliesend",
+  "version": "0.1.0",
+  "description": "流れるように。思考とファイルの境界を溶かす - フォルダ構造をアウトライナーのように編集できるツール",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev"
+  },
+  "keywords": [
+    "outliner",
+    "filesystem",
+    "electron",
+    "file-manager"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^27.0.0",
+    "electron-reload": "^2.0.0-alpha.1"
+  },
+  "dependencies": {}
+}
