@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 
@@ -73,4 +73,108 @@ if (isDev) {
   } catch (err) {
     console.log('electron-reload not found. Hot reload disabled.');
   }
+}
+
+/**
+ * IPC Handlers
+ */
+
+// フォルダ選択ダイアログを開く
+ipcMain.handle('dialog:openFolder', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory']
+  });
+
+  if (result.canceled) {
+    return null;
+  }
+
+  return result.filePaths[0];
+});
+
+// フォルダツリーを読み込む
+ipcMain.handle('fs:readTree', async (event, folderPath) => {
+  try {
+    const tree = await buildTreeFromPath(folderPath);
+    return tree;
+  } catch (error) {
+    console.error('Error reading tree:', error);
+    throw error;
+  }
+});
+
+/**
+ * ファイルシステムのヘルパー関数
+ */
+
+/**
+ * 指定されたパスからツリー構造を構築
+ */
+async function buildTreeFromPath(dirPath) {
+  const stats = await fs.stat(dirPath);
+  const name = path.basename(dirPath);
+
+  // ファイルの場合
+  if (stats.isFile()) {
+    return {
+      id: generateId(),
+      name,
+      path: dirPath,
+      type: 'file',
+      stats: {
+        size: stats.size,
+        created: stats.birthtime,
+        modified: stats.mtime,
+        isReadOnly: !(stats.mode & 0o200)
+      }
+    };
+  }
+
+  // フォルダの場合
+  const children = [];
+  try {
+    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+    for (const entry of entries) {
+      // 隠しファイルをスキップ
+      if (entry.name.startsWith('.')) {
+        continue;
+      }
+
+      const entryPath = path.join(dirPath, entry.name);
+      const childNode = await buildTreeFromPath(entryPath);
+      children.push(childNode);
+    }
+  } catch (error) {
+    console.error(`Error reading directory ${dirPath}:`, error);
+  }
+
+  // 子要素をソート（フォルダ優先、名前順）
+  children.sort((a, b) => {
+    if (a.type !== b.type) {
+      return a.type === 'folder' ? -1 : 1;
+    }
+    return a.name.localeCompare(b.name, 'ja');
+  });
+
+  return {
+    id: generateId(),
+    name,
+    path: dirPath,
+    type: 'folder',
+    children,
+    stats: {
+      size: stats.size,
+      created: stats.birthtime,
+      modified: stats.mtime,
+      isReadOnly: !(stats.mode & 0o200)
+    }
+  };
+}
+
+/**
+ * ユニークIDを生成（簡易版UUID）
+ */
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }

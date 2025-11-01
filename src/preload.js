@@ -6,11 +6,17 @@ const { contextBridge, ipcRenderer } = require('electron');
  */
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  // 将来的にファイルシステムAPIなどをここに追加
+  // システム情報
   platform: process.platform,
   versions: {
     node: process.versions.node,
     chrome: process.versions.chrome,
     electron: process.versions.electron
-  }
+  },
+
+  // ダイアログ
+  openFolder: () => ipcRenderer.invoke('dialog:openFolder'),
+
+  // ファイルシステム
+  readTree: (folderPath) => ipcRenderer.invoke('fs:readTree', folderPath)
 });

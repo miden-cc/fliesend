@@ -137,6 +137,49 @@ body {
   color: var(--text-secondary);
 }
 
+/* ツリーノード */
+.tree-node {
+  display: flex;
+  align-items: center;
+  padding: 4px 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.tree-node:hover {
+  background: var(--bg-hover);
+}
+
+.tree-node-icon {
+  margin-right: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  min-width: 16px;
+  display: inline-block;
+  text-align: center;
+}
+
+.tree-node-name {
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.tree-node[data-node-type="folder"] {
+  font-weight: 500;
+}
+
+.tree-node[data-node-type="file"] {
+  font-weight: 400;
+  cursor: default;
+}
+
+.tree-node[data-node-type="file"]:hover {
+  background: var(--bg-hover);
+}
+
 /* スクロールバーのスタイル */
 .outline-tree::-webkit-scrollbar {
   width: 8px;
