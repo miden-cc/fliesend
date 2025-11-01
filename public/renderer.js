@@ -7,6 +7,7 @@
 const openFolderBtn = document.getElementById('openFolderBtn');
 const outlineTree = document.getElementById('outlineTree');
 const statusBar = document.getElementById('statusBar');
+const loadingIndicator = document.getElementById('loadingIndicator');
 
 // アプリケーション状態
 let state = {
@@ -53,6 +54,8 @@ async function handleOpenFolder() {
       return;
     }
 
+    // ローディング表示
+    showLoading(true);
     updateStatus('フォルダを読み込み中...');
 
     // フォルダツリーを読み込む
@@ -67,9 +70,12 @@ async function handleOpenFolder() {
     // ツリーを描画
     renderTree();
 
+    // ローディング非表示
+    showLoading(false);
     updateStatus(`読み込み完了: ${folderPath}`);
   } catch (error) {
     console.error('Error opening folder:', error);
+    showLoading(false);
     updateStatus('エラー: フォルダの読み込みに失敗しました');
     showError('フォルダの読み込みに失敗しました');
   }
@@ -496,6 +502,15 @@ function findParentNode(node, targetId) {
  */
 function updateStatus(message) {
   statusBar.textContent = message;
+}
+
+/**
+ * ローディングインジケータの表示/非表示
+ */
+function showLoading(show) {
+  if (loadingIndicator) {
+    loadingIndicator.style.display = show ? 'flex' : 'none';
+  }
 }
 
 /**
