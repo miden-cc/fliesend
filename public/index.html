@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>fließend</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <h1 class="app-title">fließend</h1>
+      <p class="app-subtitle">流れるように。思考とファイルの境界を溶かす。</p>
+    </header>
+
+    <main class="app-main">
+      <div class="outline-container">
+        <div class="outline-header">
+          <button id="openFolderBtn" class="btn-primary">フォルダを開く</button>
+        </div>
+
+        <div id="outlineTree" class="outline-tree">
+          <div class="empty-state">
+            <p>フォルダを選択して開始</p>
+            <p class="empty-state-hint">「フォルダを開く」ボタンをクリック</p>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="app-footer">
+      <span id="statusBar">準備完了</span>
+    </footer>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
