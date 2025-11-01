@@ -18,5 +18,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openFolder: () => ipcRenderer.invoke('dialog:openFolder'),
 
   // ファイルシステム
-  readTree: (folderPath) => ipcRenderer.invoke('fs:readTree', folderPath)
+  readTree: (folderPath) => ipcRenderer.invoke('fs:readTree', folderPath),
+  openFile: (filePath) => ipcRenderer.invoke('fs:openFile', filePath)
 });

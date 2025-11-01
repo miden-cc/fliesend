@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, shell } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 
@@ -99,6 +99,17 @@ ipcMain.handle('fs:readTree', async (event, folderPath) => {
     return tree;
   } catch (error) {
     console.error('Error reading tree:', error);
+    throw error;
+  }
+});
+
+// ファイルを外部エディタで開く
+ipcMain.handle('fs:openFile', async (event, filePath) => {
+  try {
+    await shell.openPath(filePath);
+    return { success: true };
+  } catch (error) {
+    console.error('Error opening file:', error);
     throw error;
   }
 });

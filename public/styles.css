@@ -153,6 +153,11 @@ body {
   background: var(--bg-hover);
 }
 
+.tree-node.selected {
+  background: #d4e4f7;
+  border-left: 3px solid var(--accent-color);
+}
+
 .tree-node-icon {
   margin-right: 8px;
   font-size: 12px;
