@@ -72,6 +72,10 @@ function handleKeyDown(event) {
       navigateDown();
       break;
     case 'Enter':
+      // contenteditableがフォーカスされている場合は何もしない
+      if (document.activeElement.isContentEditable) {
+        return;
+      }
       event.preventDefault();
       handleCreateSiblingFolder();
       break;

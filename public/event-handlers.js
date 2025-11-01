@@ -57,15 +57,9 @@ export async function handleCreateNode(type) {
 
   const parentNode = getParentFolder(tree, selectedNodeId);
 
-  const nodeName = prompt(
-    `新しい${type === 'file' ? 'ファイル' : 'フォルダ'}名を入力してください:`,
-    type === 'file' ? 'new-file.txt' : 'new-folder'
-  );
-  if (!nodeName) return;
-
   try {
     const newNode = await withFsErrorHandling(
-      () => window.electronAPI.createNode(parentNode.path, nodeName, type),
+      () => window.electronAPI.createNode(parentNode.path, null, type),
       '作成'
     );
 
@@ -73,6 +67,15 @@ export async function handleCreateNode(type) {
     const newExpandedNodes = addToExpandedNodes(expandedNodes, parentNode.id);
 
     setState({ tree, expandedNodes: newExpandedNodes, selectedNodeId: newNode.id });
+
+    // 少し待ってから名前の変更を開始
+    setTimeout(() => {
+      const nodeElement = document.querySelector(`[data-node-id="${newNode.id}"] .tree-node-name`);
+      if (nodeElement) {
+        nodeElement.focus();
+        document.execCommand('selectAll', false, null);
+      }
+    }, 100);
   } catch (error) {
     // エラーは withFsErrorHandling で処理済み
   }
@@ -112,6 +115,15 @@ export async function handleCreateSiblingFolder() {
     addChildToNode(parent, newNode);
 
     setState({ tree, selectedNodeId: newNode.id });
+
+    // 少し待ってから名前の変更を開始
+    setTimeout(() => {
+      const nodeElement = document.querySelector(`[data-node-id="${newNode.id}"] .tree-node-name`);
+      if (nodeElement) {
+        nodeElement.focus();
+        document.execCommand('selectAll', false, null);
+      }
+    }, 100);
   } catch (error) {
     // エラーは withFsErrorHandling で処理済み
   }
