@@ -72,6 +72,7 @@ body {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   overflow: hidden;
+  position: relative;
 }
 
 .outline-header {
@@ -135,6 +136,92 @@ body {
   border-top: 1px solid var(--border-color);
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+/* ツリーノード */
+.tree-node {
+  display: flex;
+  align-items: center;
+  padding: 4px 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.tree-node:hover {
+  background: var(--bg-hover);
+}
+
+.tree-node.selected {
+  background: #d4e4f7;
+  border-left: 3px solid var(--accent-color);
+}
+
+.tree-node-icon {
+  margin-right: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  min-width: 16px;
+  display: inline-block;
+  text-align: center;
+}
+
+.tree-node-name {
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.tree-node[data-node-type="folder"] {
+  font-weight: 500;
+}
+
+.tree-node[data-node-type="file"] {
+  font-weight: 400;
+  cursor: default;
+}
+
+.tree-node[data-node-type="file"]:hover {
+  background: var(--bg-hover);
+}
+
+/* ローディングインジケータ */
+.loading-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  background: var(--bg-primary);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  z-index: 1000;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--bg-secondary);
+  border-top-color: var(--accent-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-indicator p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
 }
 
 /* スクロールバーのスタイル */
