@@ -11,8 +11,8 @@ import { renderTree } from './rendering.js';
 import {
   navigateUp,
   navigateDown,
-  moveNodeUp,
-  moveNodeDown,
+  outdentNode,
+  indentNode,
   toggleNodeExpansion
 } from './navigation.js';
 import {
@@ -116,9 +116,9 @@ function handleKeyDown(event) {
       event.preventDefault();
       if (selectedNodeId) {
         if (event.shiftKey) {
-          moveNodeUp();
+          outdentNode();
         } else {
-          moveNodeDown();
+          indentNode();
         }
       }
       break;
