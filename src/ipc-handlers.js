@@ -174,6 +174,29 @@ function setupIpcHandlers(mainWindow) {
   });
 }
 
+  // 2つのノードをマージ
+  ipcMain.handle('fs:mergeNodes', async (event, sourcePath, targetPath) => {
+    try {
+      const sourceChildren = await fs.readdir(sourcePath);
+      for (const child of sourceChildren) {
+        // Skip metadata file
+        if (child === '.metadata.json') continue;
+
+        const oldPath = path.join(sourcePath, child);
+        const newPath = path.join(targetPath, child);
+        await fs.rename(oldPath, newPath);
+      }
+
+      await fs.rm(sourcePath, { recursive: true, force: true });
+      console.log(`Merged: ${sourcePath} -> ${targetPath}`);
+      return { success: true };
+    } catch (error) {
+      console.error(`Error merging nodes:`, error);
+      throw error;
+    }
+  });
+}
+
 module.exports = {
   setupIpcHandlers
 };
