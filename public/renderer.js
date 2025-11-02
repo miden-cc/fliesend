@@ -17,9 +17,9 @@ import {
 } from './navigation.js';
 import {
   handleOpenFolder,
-  handleCreateNode,
-  handleCreateSiblingFolder,
-  handleDeleteNode
+  handleDeleteNode,
+  handleEnterKey,
+  handleBackspaceKey
 } from './event-handlers.js';
 
 /**
@@ -41,9 +41,7 @@ function init() {
 function setupEventListeners() {
   // ボタンイベント
   document.getElementById('openFolderBtn').addEventListener('click', handleOpenFolder);
-  document.getElementById('newFileBtn').addEventListener('click', () => handleCreateNode('file'));
-  document.getElementById('newFolderBtn').addEventListener('click', () => handleCreateNode('folder'));
-  document.getElementById('deleteBtn').addEventListener('click', handleDeleteNode);
+  // 'newFileBtn', 'newFolderBtn', 'deleteBtn' are removed as they are not part of the outliner concept
 
   // キーボードイベント
   document.addEventListener('keydown', handleKeyDown);
@@ -53,16 +51,12 @@ function setupEventListeners() {
  * キーボードイベントのハンドリング
  */
 function handleKeyDown(event) {
-  const { tree, selectedNodeId, expandedNodes } = getState();
-  if (!tree) return;
+  const { selectedNodeId } = getState();
+  if (!selectedNodeId) return;
 
-  // contenteditable要素内での編集中は、EnterとEscapeキーのみを処理
-  if (event.target.isContentEditable) {
-    if (event.key === 'Enter' || event.key === 'Escape') {
-      event.target.blur();
-    }
-    return;
-  }
+  // We are always in a contenteditable element in the outliner model
+  if (!event.target.classList.contains('tree-node-name')) return;
+
 
   switch (event.key) {
     case 'ArrowUp':
@@ -74,76 +68,22 @@ function handleKeyDown(event) {
       navigateDown();
       break;
     case 'Enter':
-      if (document.activeElement.isContentEditable) return;
       event.preventDefault();
-      if (selectedNodeId) {
-        const node = findNodeById(tree, selectedNodeId);
-        if (node.type === 'folder') {
-          toggleNodeExpansion(selectedNodeId);
-        } else {
-          // Assuming you have a function to open files.
-          // Replace with your actual implementation.
-          window.electronAPI.openFile(node.path);
-        }
-      }
+      handleEnterKey(event, selectedNodeId);
       break;
-    case ' ':
-      event.preventDefault();
-      if (selectedNodeId) {
-        const node = findNodeById(tree, selectedNodeId);
-        if (node && node.type === 'folder') {
-          toggleNodeExpansion(selectedNodeId);
-        }
-      }
-      break;
-    case 'ArrowRight':
-      event.preventDefault();
-      if (selectedNodeId) {
-        const node = findNodeById(tree, selectedNodeId);
-        if (node && node.type === 'folder' && !expandedNodes.has(selectedNodeId)) {
-          toggleNodeExpansion(selectedNodeId);
-        }
-      }
-      break;
-    case 'ArrowLeft':
-      event.preventDefault();
-      if (selectedNodeId) {
-        const node = findNodeById(tree, selectedNodeId);
-        if (node && node.type === 'folder' && expandedNodes.has(selectedNodeId)) {
-          toggleNodeExpansion(selectedNodeId);
-        }
-      }
+    case 'Backspace':
+      handleBackspaceKey(event, selectedNodeId);
       break;
     case 'Tab':
       event.preventDefault();
-      if (selectedNodeId) {
-        if (event.shiftKey) {
-          outdentNode();
-        } else {
-          indentNode();
-        }
+      if (event.shiftKey) {
+        outdentNode();
+      } else {
+        indentNode();
       }
       break;
-    case 'Delete':
-    case 'Backspace':
-      event.preventDefault();
-      handleDeleteNode();
-      break;
-    case 'F2':
-      event.preventDefault();
-      if (selectedNodeId) {
-        const outlineTree = document.getElementById('outlineTree');
-        const nodeElement = outlineTree.querySelector(`[data-node-id="${selectedNodeId}"] .tree-node-name`);
-        if (nodeElement) {
-          nodeElement.focus();
-          const range = document.createRange();
-          range.selectNodeContents(nodeElement);
-          const selection = window.getSelection();
-          selection.removeAllRanges();
-          selection.addRange(range);
-        }
-      }
-      break;
+    // We keep the default delete behavior for selected text, etc.
+    // The outliner delete logic is handled by handleBackspaceKey at the start of a line.
   }
 }
 

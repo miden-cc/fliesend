@@ -53,52 +53,30 @@ export function renderTree() {
  */
 export function renderNode(node, level, selectedNodeId, expandedNodes) {
   const isExpanded = expandedNodes.has(node.id);
-  const hasChildren = node.type === 'folder' && node.children && node.children.length > 0;
 
-  // Static icon (bullet or square)
-  const icon = h('span', {}, node.type === 'folder' ? '▪' : '・');
-
-  // Arrow icon (only for folders with children, shown on hover)
-  let arrowIcon = null;
-  if (node.type === 'folder' && hasChildren) {
-    arrowIcon = h('span', { class: 'folder-arrow' }, isExpanded ? '▼' : '▶');
-  }
-
-  const children = (node.type === 'folder' && isExpanded && node.children)
+  const children = (node.children && isExpanded)
     ? node.children.map(child => renderNode(child, level + 1, selectedNodeId, expandedNodes))
     : [];
 
   const props = {
     class: `tree-node ${selectedNodeId === node.id ? 'selected' : ''}`,
     'data-node-id': node.id,
-    'data-node-type': node.type,
+    'data-node-type': node.type, // Keep type for backend logic, but UI is consistent
     'data-node-name': node.name,
     style: `padding-left: ${level * 20}px`,
+    onclick: (e) => {
+      e.stopPropagation();
+      selectNode(node.id);
+    },
   };
-
-  if (node.type === 'folder') {
-    props.onclick = (e) => {
-      e.stopPropagation();
-      selectNode(node.id);
-      toggleNodeExpansion(node.id);
-    };
-  } else {
-    props.onclick = (e) => {
-      e.stopPropagation();
-      selectNode(node.id);
-      openFileInExternalEditor(node.path);
-    };
-  }
 
   const originalName = node.displayName === '' ? 'blank' : (node.displayName || escapeHtml(node.name));
   const nameElement = h('span', {
     class: 'tree-node-name',
-    contenteditable: selectedNodeId === node.id,
+    contenteditable: true, // Always editable
     onkeydown: (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        e.target.blur();
-      } else if (e.key === 'Escape') {
+      // Keydown logic will be handled in the main renderer.js
+      if (e.key === 'Escape') {
         e.preventDefault();
         e.target.textContent = originalName;
         e.target.blur();
@@ -110,7 +88,6 @@ export function renderNode(node, level, selectedNodeId, expandedNodes) {
   }, originalName);
 
   return h('div', props,
-    h('span', { class: 'tree-node-icon' }, arrowIcon, icon),
     nameElement,
     ...children
   );

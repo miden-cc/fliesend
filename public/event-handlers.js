@@ -45,99 +45,15 @@ export async function handleOpenFolder() {
 }
 
 /**
- * ノード作成処理
- * @param {string} type - 'file' または 'folder'
- */
-export async function handleCreateNode(type) {
-  const { tree, selectedNodeId, expandedNodes } = getState();
-  if (!tree) {
-    showNotification('まずフォルダを開いてください。', 'error');
-    return;
-  }
-
-  const parentNode = getParentFolder(tree, selectedNodeId);
-
-  try {
-    const newNode = await withFsErrorHandling(
-      () => window.electronAPI.createNode(parentNode.path, null, type),
-      '作成'
-    );
-
-    addChildToNode(parentNode, newNode);
-    const newExpandedNodes = addToExpandedNodes(expandedNodes, parentNode.id);
-
-    setState({ tree, expandedNodes: newExpandedNodes, selectedNodeId: newNode.id });
-
-    // 少し待ってから名前の変更を開始
-    setTimeout(() => {
-      const nodeElement = document.querySelector(`[data-node-id="${newNode.id}"] .tree-node-name`);
-      if (nodeElement) {
-        nodeElement.focus();
-        document.execCommand('selectAll', false, null);
-      }
-    }, 100);
-  } catch (error) {
-    // エラーは withFsErrorHandling で処理済み
-  }
-}
-
-/**
- * 兄弟フォルダ作成処理
- */
-export async function handleCreateSiblingFolder() {
-  const { tree, selectedNodeId } = getState();
-
-  const selectedNode = getSelectedNodeOrError(
-    tree,
-    selectedNodeId,
-    findNodeById,
-    '基準となるファイルまたはフォルダを選択してください。'
-  );
-  if (!selectedNode) return;
-
-  if (isRootNode(selectedNode, tree)) {
-    showNotification('ルート直下には兄弟アイテムを作成できません。', 'error');
-    return;
-  }
-
-  const parent = findParentNode(tree, selectedNodeId);
-  if (!parent) {
-    showNotification('親フォルダが見つかりません。', 'error');
-    return;
-  }
-
-  try {
-    const newNode = await withFsErrorHandling(
-      () => window.electronAPI.createNode(parent.path, null, 'folder'),
-      '作成'
-    );
-
-    addChildToNode(parent, newNode);
-
-    setState({ tree, selectedNodeId: newNode.id });
-
-    // 少し待ってから名前の変更を開始
-    setTimeout(() => {
-      const nodeElement = document.querySelector(`[data-node-id="${newNode.id}"] .tree-node-name`);
-      if (nodeElement) {
-        nodeElement.focus();
-        document.execCommand('selectAll', false, null);
-      }
-    }, 100);
-  } catch (error) {
-    // エラーは withFsErrorHandling で処理済み
-  }
-}
-
-/**
  * ノード削除処理
  */
-export async function handleDeleteNode() {
+export async function handleDeleteNode(nodeIdToDelete) {
   const { tree, selectedNodeId } = getState();
+  const id = nodeIdToDelete || selectedNodeId;
 
   const nodeToDelete = getSelectedNodeOrError(
     tree,
-    selectedNodeId,
+    id,
     findNodeById,
     '削除するファイルまたはフォルダを選択してください。'
   );
@@ -145,23 +61,18 @@ export async function handleDeleteNode() {
 
   if (isRootNode(nodeToDelete, tree)) return;
 
-  const confirmation = confirm(
-    `'${nodeToDelete.name}' を本当に削除しますか？この操作は元に戻せません。`
-  );
-  if (!confirmation) return;
-
   try {
     await withFsErrorHandling(
       () => window.electronAPI.deleteNode(nodeToDelete.path),
       '削除'
     );
 
-    const parent = findParentNode(tree, selectedNodeId);
-    removeChildFromNode(parent, selectedNodeId);
+    const parent = findParentNode(tree, id);
+    removeChildFromNode(parent, id);
 
     setState({ tree, selectedNodeId: parent ? parent.id : null });
   } catch (error) {
-    // エラーは withFsErrorHandling で処理済み
+    // Handle error
   }
 }
 
@@ -169,44 +80,151 @@ export async function handleDeleteNode() {
  * ノード名変更処理
  */
 export async function handleRenameNode(nodeId, newName) {
+  if (!newName || newName.trim() === '') {
+    handleDeleteNode(nodeId);
+    return;
+  }
+
   const { tree } = getState();
   const nodeToRename = findNodeById(tree, nodeId);
-  if (!nodeToRename) return;
+  if (!nodeToRename || nodeToRename.displayName === newName) return;
 
-  // If the node has a displayName, we are updating the metadata
-  if (nodeToRename.displayName !== null && nodeToRename.displayName !== undefined) {
-    if (nodeToRename.displayName === newName) return;
-    try {
-      const newPath = await withFsErrorHandling(
-        () => window.electronAPI.updateNodeDisplayName(nodeToRename.path, newName),
-        '表示名を変更'
-      );
+  try {
+    const newPath = await withFsErrorHandling(
+      () => window.electronAPI.updateNodeDisplayName(nodeToRename.path, newName),
+      '表示名を変更'
+    );
 
-      // Update the node in the local state
-      nodeToRename.displayName = newName;
-      nodeToRename.name = newPath.split('/').pop(); // Update the folder name
-      nodeToRename.path = newPath;
+    nodeToRename.displayName = newName;
+    nodeToRename.name = newPath.split('/').pop();
+    nodeToRename.path = newPath;
 
-      setState({ tree });
-    } catch (error) {
-      // Error is handled by withFsErrorHandling
+    setState({ tree });
+  } catch (error) {
+    // Handle error
+  }
+}
+
+/**
+ * Get cursor position within a contenteditable element
+ */
+function getCursorPosition(element) {
+  const selection = window.getSelection();
+  if (selection.rangeCount === 0) return null;
+  const range = selection.getRangeAt(0);
+  return {
+    start: range.startOffset,
+    end: range.endOffset,
+    isAtStart: range.startOffset === 0,
+    isAtEnd: range.startOffset === element.textContent.length,
+  };
+}
+
+/**
+ * Handle Enter key press in an outliner node
+ */
+export async function handleEnterKey(event, nodeId) {
+  const { tree } = getState();
+  const selectedNode = findNodeById(tree, nodeId);
+  if (!selectedNode || isRootNode(selectedNode, tree)) return;
+
+  const parent = findParentNode(tree, nodeId);
+  if (!parent) return;
+
+  try {
+    const newNode = await withFsErrorHandling(
+      () => window.electronAPI.createNode(parent.path, null, 'folder'),
+      '作成'
+    );
+
+    const currentIndex = parent.children.findIndex(child => child.id === nodeId);
+    parent.children.splice(currentIndex + 1, 0, newNode);
+
+    setState({ tree, selectedNodeId: newNode.id });
+
+    setTimeout(() => {
+      const nodeElement = document.querySelector(`[data-node-id="${newNode.id}"] .tree-node-name`);
+      if (nodeElement) nodeElement.focus();
+    }, 50);
+
+  } catch (error) {
+    // Handle error
+  }
+}
+
+/**
+ * Handle Backspace key press in an outliner node
+ */
+export async function handleBackspaceKey(event, nodeId) {
+  const element = event.target;
+  const position = getCursorPosition(element);
+
+  if (!position || !position.isAtStart || position.start !== position.end) return;
+
+  event.preventDefault();
+
+  const { tree } = getState();
+  const parent = findParentNode(tree, nodeId);
+  if (!parent) return;
+
+  const nodeIndex = parent.children.findIndex(child => child.id === nodeId);
+  if (nodeIndex <= 0) return;
+
+  const sourceNode = parent.children[nodeIndex];
+  const targetNode = parent.children[nodeIndex - 1];
+
+  handleMergeNodes(sourceNode, targetNode);
+}
+
+/**
+ * Merge two nodes (source into target)
+ */
+async function handleMergeNodes(sourceNode, targetNode) {
+  const { tree } = getState();
+  const originalTargetName = targetNode.displayName;
+  const textToAppend = sourceNode.displayName;
+
+  try {
+    await withFsErrorHandling(
+      () => window.electronAPI.mergeNodes(sourceNode.path, targetNode.path),
+      '結合'
+    );
+
+    const newDisplayName = originalTargetName + textToAppend;
+    const newPath = await withFsErrorHandling(
+      () => window.electronAPI.updateNodeDisplayName(targetNode.path, newDisplayName),
+      '表示名を変更'
+    );
+
+    targetNode.displayName = newDisplayName;
+    targetNode.name = newPath.split('/').pop();
+    targetNode.path = newPath;
+
+    if (sourceNode.children && sourceNode.children.length > 0) {
+      if (!targetNode.children) targetNode.children = [];
+      targetNode.children.push(...sourceNode.children);
     }
-  } else {
-    // Otherwise, it's a normal rename
-    if (nodeToRename.name === newName) return;
-    try {
-      const newPath = await withFsErrorHandling(
-        () => window.electronAPI.renameNode(nodeToRename.path, newName),
-        '名前を変更'
-      );
 
-      nodeToRename.name = newName;
-      nodeToRename.path = newPath;
+    const parent = findParentNode(tree, sourceNode.id);
+    removeChildFromNode(parent, sourceNode.id);
 
-      setState({ tree });
-    } catch (error) {
-      // Error is handled by withFsErrorHandling
-    }
+    setState({ tree, selectedNodeId: targetNode.id });
+
+    setTimeout(() => {
+      const nodeElement = document.querySelector(`[data-node-id="${targetNode.id}"] .tree-node-name`);
+      if (nodeElement) {
+        nodeElement.focus();
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.setStart(nodeElement.childNodes[0], originalTargetName.length);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    }, 50);
+
+  } catch (error) {
+    // Handle error
   }
 }
 
