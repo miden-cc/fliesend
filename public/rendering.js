@@ -90,6 +90,7 @@ export function renderNode(node, level, selectedNodeId, expandedNodes) {
     };
   }
 
+  const originalName = node.displayName === '' ? 'blank' : (node.displayName || escapeHtml(node.name));
   const nameElement = h('span', {
     class: 'tree-node-name',
     contenteditable: selectedNodeId === node.id,
@@ -97,12 +98,16 @@ export function renderNode(node, level, selectedNodeId, expandedNodes) {
       if (e.key === 'Enter') {
         e.preventDefault();
         e.target.blur();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        e.target.textContent = originalName;
+        e.target.blur();
       }
     },
     onblur: (e) => {
       handleRenameNode(node.id, e.target.textContent);
     }
-  }, node.displayName === '' ? 'blank' : (node.displayName || escapeHtml(node.name)));
+  }, originalName);
 
   return h('div', props,
     h('span', { class: 'tree-node-icon' }, arrowIcon, icon),

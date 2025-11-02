@@ -56,9 +56,11 @@ function handleKeyDown(event) {
   const { tree, selectedNodeId, expandedNodes } = getState();
   if (!tree) return;
 
-  // contenteditable要素内での編集中は、Escapeキー以外は無視
+  // contenteditable要素内での編集中は、EnterとEscapeキーのみを処理
   if (event.target.isContentEditable) {
-    if (event.key === 'Escape') event.target.blur();
+    if (event.key === 'Enter' || event.key === 'Escape') {
+      event.target.blur();
+    }
     return;
   }
 
@@ -134,7 +136,11 @@ function handleKeyDown(event) {
         const nodeElement = outlineTree.querySelector(`[data-node-id="${selectedNodeId}"] .tree-node-name`);
         if (nodeElement) {
           nodeElement.focus();
-          document.execCommand('selectAll', false, null);
+          const range = document.createRange();
+          range.selectNodeContents(nodeElement);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
         }
       }
       break;
