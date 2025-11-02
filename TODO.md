@@ -6,7 +6,9 @@
 
 ---
 
-## Phase 0: 環境セットアップ (4-6時間)
+## Task 1: Project Setup and Basic Display (12-18時間)
+
+### Phase 0: 環境セットアップ (4-6時間)
 
 - [ ] Electronプロジェクトの初期化
   - `npm init` + Electron インストール
@@ -23,9 +25,7 @@
   - 推奨: まずはプレーンJSで軽量に
   - **時間:** 2時間
 
----
-
-## Phase 1: 基本表示機能 (8-12時間)
+### Phase 1: 基本表示機能 (8-12時間)
 
 - [ ] フォルダ選択ダイアログ
   - Electronのdialog APIで実装
@@ -44,7 +44,9 @@
 
 ---
 
-## Phase 2: インタラクション (12-16時間)
+## Task 2: UI Interaction and Navigation (12-16時間)
+
+### Phase 2: インタラクション (12-16時間)
 
 - [ ] バレット表示（基本）
   - 全アイテムに `・` を表示
@@ -76,7 +78,9 @@
 
 ---
 
-## Phase 3: コア機能 - 階層変更 (12-16時間)
+## Task 3: Core Feature - Hierarchical Manipulation (12-16時間)
+
+### Phase 3: コア機能 - 階層変更 (12-16時間)
 
 - [ ] Tab/Shift+Tabキーバインド
   - キーイベントのハンドリング
@@ -98,7 +102,9 @@
 
 ---
 
-## Phase 4: ファイルシステム反映 (8-12時間)
+## Task 4: Filesystem Integration (8-12時間)
+
+### Phase 4: ファイルシステム反映 (8-12時間)
 
 - [ ] ファイル/フォルダの移動実装
   - Node.js `fs.rename()` 使用
@@ -117,7 +123,9 @@
 
 ---
 
-## Phase 5: UI/UX洗練 (4-6時間)
+## Task 5: UI/UX Refinement and Finalization (8-12時間)
+
+### Phase 5: UI/UX洗練 (4-6時間)
 
 - [ ] スタイリング
   - フォント、色、間隔の調整
@@ -132,9 +140,7 @@
   - 移動成功/失敗の通知
   - **時間:** 1時間
 
----
-
-## Phase 6: テストと仕上げ (4-6時間)
+### Phase 6: テストと仕上げ (4-6時間)
 
 - [ ] 手動テスト
   - 各種操作の動作確認
