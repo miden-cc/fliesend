@@ -69,9 +69,9 @@ export function navigateDown() {
 }
 
 /**
- * Tab: 選択されたノードの階層を下げる（前の兄弟フォルダの子として移動）
+ * Tab: 選択されたノードをインデント（階層を下げる）
  */
-export async function moveNodeDown() {
+export async function indentNode() {
   const { tree, selectedNodeId, expandedNodes } = getState();
   if (!selectedNodeId) return;
 
@@ -117,9 +117,9 @@ export async function moveNodeDown() {
 }
 
 /**
- * Shift+Tab: 選択されたノードの階層を上げる（親の兄弟として移動）
+ * Shift+Tab: 選択されたノードをアウトデント（階層を上げる）
  */
-export async function moveNodeUp() {
+export async function outdentNode() {
   const { tree, selectedNodeId } = getState();
   if (!selectedNodeId) return;
 
