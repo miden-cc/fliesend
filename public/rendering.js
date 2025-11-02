@@ -74,20 +74,18 @@ export function renderNode(node, level, selectedNodeId, expandedNodes) {
     'data-node-type': node.type,
     'data-node-name': node.name,
     style: `padding-left: ${level * 20}px`,
-    onclick: (e) => {
-      e.stopPropagation();
-      selectNode(node.id);
-    },
   };
 
   if (node.type === 'folder') {
-    props.ondblclick = (e) => {
+    props.onclick = (e) => {
       e.stopPropagation();
+      selectNode(node.id);
       toggleNodeExpansion(node.id);
     };
   } else {
-    props.ondblclick = (e) => {
+    props.onclick = (e) => {
       e.stopPropagation();
+      selectNode(node.id);
       openFileInExternalEditor(node.path);
     };
   }
