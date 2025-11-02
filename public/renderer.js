@@ -72,12 +72,18 @@ function handleKeyDown(event) {
       navigateDown();
       break;
     case 'Enter':
-      // contenteditableがフォーカスされている場合は何もしない
-      if (document.activeElement.isContentEditable) {
-        return;
-      }
+      if (document.activeElement.isContentEditable) return;
       event.preventDefault();
-      handleCreateSiblingFolder();
+      if (selectedNodeId) {
+        const node = findNodeById(tree, selectedNodeId);
+        if (node.type === 'folder') {
+          toggleNodeExpansion(selectedNodeId);
+        } else {
+          // Assuming you have a function to open files.
+          // Replace with your actual implementation.
+          window.electronAPI.openFile(node.path);
+        }
+      }
       break;
     case ' ':
       event.preventDefault();
